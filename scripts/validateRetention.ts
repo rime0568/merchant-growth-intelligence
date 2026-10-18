@@ -1,5 +1,9 @@
-import { appData } from "../src/data/generatedData";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import type { AppData } from "../src/types/data";
 import { cohortRows, initialFilters, merchantViews, retentionSummary, rootCauseRows, rowsByMonth } from "../src/utils/metrics";
+
+const appData = JSON.parse(readFileSync(resolve("public/data/generatedData.json"), "utf8")) as AppData;
 
 const assert = (condition: boolean, message: string) => { if (!condition) throw new Error(message); };
 const merchants = merchantViews(appData, initialFilters);

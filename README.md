@@ -2,11 +2,19 @@
 
 An evidence-grounded AI and analytics product for understanding merchant QR-payment activation, retention, pricing communication and operational follow-up.
 
-[View the current analytics demo](https://merchant-qr-retention-analysis.netlify.app/) · [Read the methodology](docs/METHODOLOGY.md) · [See the AI architecture](docs/AI_ARCHITECTURE.md)
+[Open the AI decision brief](https://merchant-qr-retention-analysis.netlify.app/?page=brief) · [Explore the analytics](https://merchant-qr-retention-analysis.netlify.app/) · [Read the methodology](docs/METHODOLOGY.md) · [See the AI architecture](docs/AI_ARCHITECTURE.md)
 
 > Portfolio project by Yilin Yang. All merchant records, pricing regimes, formulas, campaigns and outcomes are synthetic. No bank, merchant or payment-institution data is used.
 
 ![Merchant portfolio executive overview](assets/screenshots/overview.png)
+
+## 60-second product tour
+
+1. Open the [AI decision brief](https://merchant-qr-retention-analysis.netlify.app/?page=brief) and inspect the evidence, actions and limitations.
+2. Select **Adjust portfolio** to change the merchant scope; every brief is grounded in the filtered metrics.
+3. Use **Retention Analysis** to verify the M3/M6 denominators, then export the action list for human review.
+
+The public deployment clearly labels whether the brief is a live model response or the reviewed fallback. A fallback demonstrates the workflow but is never presented as a live model run.
 
 <details>
 <summary>View the evidence-grounded AI decision brief</summary>
@@ -54,6 +62,10 @@ The browser never receives an API key. The model selects documented metric keys 
 
 See [AI architecture and guardrails](docs/AI_ARCHITECTURE.md) and [evaluation plan](docs/AI_EVALUATION.md).
 
+## Why this is relevant to marketing technology
+
+The same product pattern supports CRM and lifecycle-marketing work: segment an audience with trusted metrics, identify intervention moments, generate a bounded decision brief, and keep a person responsible for the final campaign or customer action. The AI layer assists interpretation; it does not silently contact merchants or change commercial terms.
+
 ## Tech stack
 
 - React 19, TypeScript and Vite
@@ -61,6 +73,7 @@ See [AI architecture and guardrails](docs/AI_ARCHITECTURE.md) and [evaluation pl
 - Deterministic TypeScript data generator and validation scripts
 - Netlify Functions
 - Optional OpenAI Responses API with Structured Outputs
+- Per-IP and per-domain rate limiting on the model endpoint
 
 ## Run locally
 
@@ -106,6 +119,7 @@ These values are portfolio-demo outputs, not real-world performance claims.
 
 ```text
 src/                  React product and deterministic metric logic
+public/data/          Generated synthetic dataset, loaded separately from the app bundle
 scripts/              Synthetic-data generation and validation
 netlify/functions/    Server-side AI decision-brief endpoint
 docs/                 Methodology, data dictionary and AI design

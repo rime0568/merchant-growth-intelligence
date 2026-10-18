@@ -24,3 +24,7 @@ The AI layer should be evaluated independently from the deterministic metric tes
 ## Review protocol
 
 For each scenario, save the prompt version, model name, run date, structured output and reviewer notes. Do not compare models using anecdotal examples alone; report pass counts for every acceptance criterion.
+
+## Automated contract coverage
+
+`npm run test:ai` verifies the no-key fallback, trusted server formatting, rejection of incomplete metric payloads and rejection of unsupported HTTP methods. Provider-quality results are intentionally reported separately and must include saved run metadata.

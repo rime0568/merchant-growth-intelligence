@@ -75,7 +75,7 @@ export default async (request: Request) => {
     return Response.json({ error: "Method not allowed" }, { status: 405 });
   }
 
-  let body: { portfolioLabel?: string; metrics?: unknown };
+  let body: { metrics?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -85,15 +85,16 @@ export default async (request: Request) => {
   if (!validMetrics(body.metrics)) {
     return Response.json({ error: "All documented portfolio metrics are required." }, { status: 400 });
   }
+  const metrics = body.metrics;
 
   const apiKey = process.env.OPENAI_API_KEY;
   const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
-  if (!apiKey) return Response.json(demo(body.metrics));
+  if (!apiKey) return Response.json(demo(metrics));
 
   const metricKeys = Object.keys(labels) as MetricKey[];
   const suppliedMetrics = Object.fromEntries(metricKeys.map((key) => [key, {
     label: labels[key],
-    value: valueFor(key, body.metrics![key])
+    value: valueFor(key, metrics[key])
   }]));
 
   const schema = {
@@ -134,7 +135,7 @@ export default async (request: Request) => {
         },
         {
           role: "user",
-          content: JSON.stringify({ portfolio: body.portfolioLabel || "Filtered portfolio", metrics: suppliedMetrics })
+          content: JSON.stringify({ portfolio: "Current filtered merchant portfolio", metrics: suppliedMetrics })
         }
       ],
       text: { format: { type: "json_schema", name: "merchant_decision_brief", strict: true, schema } }
@@ -144,12 +145,12 @@ export default async (request: Request) => {
   if (!apiResponse.ok) {
     const diagnostic = await apiResponse.text();
     console.error("OpenAI request failed", apiResponse.status, diagnostic.slice(0, 500));
-    return Response.json(demo(body.metrics));
+    return Response.json(demo(metrics));
   }
 
   const payload = await apiResponse.json();
   const outputText = extractOutputText(payload);
-  if (!outputText) return Response.json(demo(body.metrics));
+  if (!outputText) return Response.json(demo(metrics));
 
   try {
     const parsed = JSON.parse(outputText) as {
@@ -161,12 +162,21 @@ export default async (request: Request) => {
     const evidence = parsed.evidence.map((item) => ({
       metricKey: item.metric_key,
       label: labels[item.metric_key],
-      value: valueFor(item.metric_key, body.metrics![item.metric_key]),
+      value: valueFor(item.metric_key, metrics[item.metric_key]),
       interpretation: item.interpretation
     }));
     return Response.json({ mode: "live", summary: parsed.summary, evidence, actions: parsed.actions, limitations: parsed.limitations });
   } catch (error) {
     console.error("Structured output parsing failed", error);
-    return Response.json(demo(body.metrics));
+    return Response.json(demo(metrics));
+  }
+};
+
+export const config = {
+  path: "/api/decision-brief",
+  rateLimit: {
+    windowLimit: 8,
+    windowSize: 60,
+    aggregateBy: ["ip", "domain"]
   }
 };

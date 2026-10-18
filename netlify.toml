@@ -3,11 +3,6 @@
   publish = "dist"
   functions = "netlify/functions"
 
-[[redirects]]
-  from = "/api/decision-brief"
-  to = "/.netlify/functions/decision-brief"
-  status = 200
-
 [[headers]]
   for = "/*"
   [headers.values]

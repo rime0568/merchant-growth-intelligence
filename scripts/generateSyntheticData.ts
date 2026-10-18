@@ -5,7 +5,7 @@ import { PRICING_REGIMES, SYNTHETIC_EXCESS_RATE, pricingRegimeForMonth, totalFre
 import type { AppData, FinalStatus, MerchantMaster, MerchantOutcome, MerchantPricingProfile, MonthlyUsage, OnboardingRecord, Priority, SupportRecord } from "../src/types/data";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const outputPath = resolve(__dirname, "../src/data/generatedData.ts");
+const outputPath = resolve(__dirname, "../public/data/generatedData.json");
 const PORTFOLIO_START = new Date(2024, 0, 1);
 const PORTFOLIO_END = new Date(2025, 11, 31);
 const PORTFOLIO_MONTHS = 24;
@@ -199,7 +199,7 @@ assert(fruitPeakRows.reduce((sum, row) => sum + row.all_channel_receipts, 0) / f
 
 const data: AppData = { merchantMaster: masters, onboardingRecords: onboardings, monthlyUsage: monthly, supportRecords: supports, merchantPricingProfiles: pricing, merchantOutcomes: outcomes };
 mkdirSync(dirname(outputPath), { recursive: true });
-writeFileSync(outputPath, `import type { AppData } from "../types/data";\n\nexport const appData: AppData = JSON.parse(${JSON.stringify(JSON.stringify(data))});\n`, "utf8");
+writeFileSync(outputPath, JSON.stringify(data), "utf8");
 console.log(`Generated ${masters.length} merchants, ${monthly.length} monthly rows, ${supports.length} support tickets.`);
 console.log(`Onboarding distribution: ${Object.entries(onboardingDistribution).sort(([a], [b]) => a.localeCompare(b)).map(([month, count]) => `${month}:${count}`).join(", ")}`);
 console.log(`Eligible 3m: ${masters.filter((merchant) => merchant.eligible_for_3m_retention).length}; Eligible 6m: ${masters.filter((merchant) => merchant.eligible_for_6m_retention).length}; Insufficient observation: ${outcomes.filter((outcome) => outcome.final_usage_status === "Insufficient Observation").length}.`);

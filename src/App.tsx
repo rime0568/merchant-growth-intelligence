@@ -2,9 +2,8 @@ import { useMemo, useState } from "react";
 import Papa from "papaparse";
 import { AreaChart, Area, BarChart, Bar, Cell, CartesianGrid, LabelList, Legend, Line, LineChart, Pie, PieChart, ReferenceArea, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { AlertTriangle, ArrowDownToLine, BarChart3, BellRing, BookOpen, ChevronRight, CircleHelp, Filter, LayoutDashboard, Menu, Search, ShieldAlert, Sparkles, Target, Users, X, Zap } from "lucide-react";
-import { appData } from "./data/generatedData";
 import { allowanceFormulaInterpretations, allowanceFormulaMode, PRICING_ASSUMPTION_LABEL, PRICING_REGIMES, SYNTHETIC_EXCESS_RATE, totalFreeTransactionAllowance } from "./config/pricingRegimes";
-import type { Filters } from "./types/data";
+import type { AppData, Filters } from "./types/data";
 import { campaignComparison, cohortRows, exportRows, feeBurdenByIndustry, formatPct, formatRate, industryRows, initialFilters, merchantViews, percent, pricingRegimeRows, retentionSummary, rootCauseRows, rowsByMonth, statusLabel, statusRows, type MerchantView, type MetricValue } from "./utils/metrics";
 
 type Page = "overview" | "segments" | "retention" | "drivers" | "pricing" | "actions" | "brief" | "method";
@@ -66,7 +65,7 @@ function RootCauseChart({ causes, churned }: { causes: ReturnType<typeof rootCau
   return <ResponsiveContainer width="100%" height={height}><BarChart layout="vertical" data={data} margin={{ left: 18, right: 76 }}><CartesianGrid strokeDasharray="3 3" horizontal={false} /><XAxis type="number" allowDecimals={false} /><YAxis type="category" dataKey="name" width={154} tickLine={false} axisLine={false} tick={{ fontSize: 12 }} /><Tooltip content={chartTooltip} /><Bar dataKey="value" name="Merchants" fill="#e4573d" radius={[0, 5, 5, 0]}><LabelList dataKey="annotation" position="right" fill="#52656a" fontSize={12} /></Bar></BarChart></ResponsiveContainer>;
 }
 
-function App() {
+function App({ appData }: { appData: AppData }) {
   const requestedPage = new URLSearchParams(window.location.search).get("page");
   const [page, setPage] = useState<Page>(nav.some((item) => item.id === requestedPage) ? requestedPage as Page : "overview");
   const [filters, setFilters] = useState<Filters>(initialFilters);
@@ -75,6 +74,7 @@ function App() {
   const [pricingComplaint, setPricingComplaint] = useState("All");
   const [selected, setSelected] = useState<MerchantView | null>(null);
   const [sideOpen, setSideOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(requestedPage !== "brief");
   const merchantBase = useMemo(() => merchantViews(appData, filters), [filters]);
   const merchants = useMemo(() => merchantBase.filter((merchant) =>
     (pricingExposure === "All" || (pricingExposure === "Exposed" ? merchant.pricing.affected_by_rate_change : !merchant.pricing.affected_by_rate_change)) &&
@@ -104,11 +104,11 @@ function App() {
 
   return <div className="app-shell">
     <aside className={sideOpen ? "sidebar open" : "sidebar"}><div className="brand"><span className="brand-mark">Q</span><div><b>Merchant Pulse</b><small>Portfolio analytics</small></div><button className="icon-btn close-nav" onClick={() => setSideOpen(false)} aria-label="Close navigation"><X /></button></div>
-      <nav>{nav.map((item) => { const Icon = item.icon; return <button key={item.id} onClick={() => { setPage(item.id); setSideOpen(false); }} className={page === item.id ? "active" : ""}><Icon />{item.label}</button>; })}</nav>
+      <nav>{nav.map((item) => { const Icon = item.icon; return <button key={item.id} onClick={() => { setPage(item.id); setFiltersOpen(item.id !== "brief"); setSideOpen(false); const url = new URL(window.location.href); item.id === "overview" ? url.searchParams.delete("page") : url.searchParams.set("page", item.id); window.history.replaceState({}, "", url); }} className={page === item.id ? "active" : ""}><Icon />{item.label}</button>; })}</nav>
       <div className="sidebar-note"><ShieldAlert /><p><b>Synthetic dataset</b><br />Illustrative merchant behaviour only. No real bank or payment institution data.</p></div>
     </aside>
-    <main><header className="topbar"><button className="icon-btn menu" onClick={() => setSideOpen(true)} aria-label="Open navigation"><Menu /></button><div><p className="eyebrow">Merchant QR Payment Adoption & Retention Analysis</p><h1>{page === "pricing" ? "Two Charging Models Across Four Pricing Regimes" : nav.find((n) => n.id === page)?.label}</h1></div><button className="export" onClick={download}><ArrowDownToLine />Export filtered CSV</button></header>
-      {page !== "method" && <section className="filters">
+    <main><header className="topbar"><button className="icon-btn menu" onClick={() => setSideOpen(true)} aria-label="Open navigation"><Menu /></button><div><p className="eyebrow">Merchant QR Payment Adoption & Retention Analysis</p><h1>{page === "pricing" ? "Two Charging Models Across Four Pricing Regimes" : nav.find((n) => n.id === page)?.label}</h1></div><div className="topbar-actions">{page === "brief" && <button className="scope-toggle" onClick={() => setFiltersOpen((value) => !value)}><Filter />{filtersOpen ? "Hide filters" : "Adjust portfolio"}</button>}<button className="export" onClick={download}><ArrowDownToLine />Export filtered CSV</button></div></header>
+      {page !== "method" && filtersOpen && <section className="filters">
         <div className="filter-heading"><div className="filter-label"><Filter />Portfolio Filters</div><p>Refine the merchant portfolio by location, industry, onboarding period, usage status and pricing exposure.</p></div>
         <div className="filter-summary"><span>Active filters: <b>{activeFilterCount}</b></span><span>Showing <b>{merchants.length}</b> of 308 merchants</span><div className="filter-actions"><button className="reset" onClick={resetAll}>Reset all filters</button><button className="filter-export" onClick={download}><ArrowDownToLine />Export filtered merchants</button></div></div>
         <div className="filter-groups">
@@ -188,7 +188,7 @@ function AiDecisionBrief({ merchants, affected, churned, pricingChurn, understoo
       const response = await fetch("/api/decision-brief", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ portfolioLabel: "Current filtered merchant portfolio", metrics: snapshot })
+        body: JSON.stringify({ metrics: snapshot })
       });
       if (!response.ok) throw new Error(`Request failed with ${response.status}`);
       const next = await response.json() as DecisionBrief;
@@ -213,8 +213,6 @@ function AiDecisionBrief({ merchants, affected, churned, pricingChurn, understoo
 
 function Overview({ total, primary, churned, monthly, statuses, causes, pricingChurn, merchants, selected }: { total: number; primary: number; churned: number; monthly: ReturnType<typeof rowsByMonth>; statuses: ReturnType<typeof statusRows>; causes: ReturnType<typeof rootCauseRows>; pricingChurn: number; merchants: MerchantView[]; selected: (m: MerchantView) => void }) {
   return <ExecutiveOverview total={total} primary={primary} churned={churned} monthly={monthly} statuses={statuses} causes={causes} pricingChurn={pricingChurn} merchants={merchants} selected={selected} />;
-  const funnel = [{ name: "Activated", value: total }, { name: "First transaction", value: total }, { name: "Retained 6m", value: merchants.filter((m) => m.outcome.retained_6m === true).length }, { name: "Primary channel", value: primary }];
-  return <><section className="metric-grid"><Metric label="Activated merchants" value={total.toLocaleString()} note="100% of scoped cohort" /><Metric label="Primary-channel conversion" value={formatPct(percent(primary, total))} note={`${primary} merchants use bank QR as primary`} tone="blue" /><Metric label="Churned by observation end" value={formatPct(percent(churned, total))} note={`${churned} merchants left the channel`} tone="coral" /><Metric label="Pricing-related churn" value={formatPct(percent(pricingChurn, churned))} note="Largest diagnosed churn mechanism" tone="amber" /></section><section className="insight"><AlertTriangle /><div><b>Executive signal: fee expectation, not activation, is the central retention fault line.</b><span>{pricingChurn} of {churned} churned merchants show a rate-change or pricing-understanding linkage. The intervention window is before the effective rate, not after a complaint.</span></div></section><div className="grid two"><ChartPanel title="Portfolio calendar trajectory" subtitle="Active merchants and mean bank QR receipt share by portfolio month"><ResponsiveContainer width="100%" height={270}><LineChart data={monthly}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="month" ticks={calendarAxisTicks} tick={{ fontSize: 10 }} /><YAxis yAxisId="left" /><YAxis yAxisId="right" orientation="right" tickFormatter={(v) => `${Math.round(v * 100)}%`} /><Tooltip content={chartTooltip} /><Legend /><Line yAxisId="left" type="monotone" dataKey="active" name="Active merchants" stroke="#0f766e" strokeWidth={3} dot={false} /><Line yAxisId="right" type="monotone" dataKey="share" name="Mean QR share" stroke="#f59e0b" strokeWidth={3} dot={false} /></LineChart></ResponsiveContainer></ChartPanel><ChartPanel title="Final channel position" subtitle="Primary is a distinct outcome from activation"><ResponsiveContainer width="100%" height={270}><PieChart><Pie data={statuses} dataKey="value" nameKey="name" innerRadius={58} outerRadius={90} paddingAngle={3}>{statuses.map((_, i) => <Cell key={i} fill={PALETTE[i]} />)}</Pie><Tooltip content={chartTooltip} /><Legend /></PieChart></ResponsiveContainer></ChartPanel></div><div className="grid two"><ChartPanel title="Conversion funnel" subtitle="Activation to sustained primary usage"><ResponsiveContainer width="100%" height={260}><BarChart layout="vertical" data={funnel} margin={{ left: 30 }}><XAxis type="number" /><YAxis type="category" dataKey="name" width={110} /><Tooltip content={chartTooltip} /><Bar dataKey="value" name="Merchants" fill="#2563eb" radius={[0, 5, 5, 0]} /></BarChart></ResponsiveContainer></ChartPanel><ChartPanel title="Primary Root Cause Profile" subtitle="Primary Root Cause among churned merchants / "><RootCauseChart causes={causes} churned={churned} /></ChartPanel></div><Featured merchants={merchants} selected={selected} /></>;
 }
 
 function Featured({ merchants, selected }: { merchants: MerchantView[]; selected: (m: MerchantView) => void }) { const m = merchants.find((x) => x.merchant_id === "M187"); if (!m) return null; return <section className="featured"><div><p className="eyebrow">Featured case study</p><h2>M187: delayed use turned a rate change into a pricing shock</h2><p>Promotional onboarding created a low-friction entry, but the merchant did not build a routine before the rate change. The unanswered follow-up left the pricing expectation gap unresolved; usage then declined after a complaint.</p><button onClick={() => selected(m)}>Open merchant timeline <ChevronRight /></button></div><ol><li><b>Onboarded</b><span>Promotion activated</span></li><li><b>48 days</b><span>First real transaction</span></li><li><b>Rate adjusted</b><span>Follow-up not answered</span></li><li><b>Complaint</b><span>Expectation gap recorded</span></li><li><b>Stopped Using at M5</b><span>Pricing-sensitive exit</span></li></ol></section>; }

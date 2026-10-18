@@ -11,7 +11,9 @@
     "check": "tsc -b",
     "typecheck": "tsc -b",
     "check:ui-language": "tsx scripts/checkUiLanguage.ts",
-    "test": "tsx scripts/validateRetention.ts",
+    "test:metrics": "tsx scripts/validateRetention.ts",
+    "test:ai": "tsx scripts/testDecisionBrief.ts",
+    "test": "npm run test:metrics && npm run test:ai",
     "check:all": "npm run generate:data && npm run typecheck && npm run test && npm run check:ui-language"
   },
   "dependencies": {

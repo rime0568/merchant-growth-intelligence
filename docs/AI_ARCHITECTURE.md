@@ -18,6 +18,8 @@ The client sends only seven aggregate fields:
 
 No merchant names, customer identifiers, transaction rows or free-form user data are sent to the model.
 
+The public endpoint does not accept a free-form portfolio label. It uses a server-owned description and validates all seven numeric fields before a provider call, reducing prompt-injection surface.
+
 ## Structured response
 
 The server requests four fields through a strict JSON Schema:
@@ -39,6 +41,10 @@ The application returns a reviewed demo brief when:
 - structured output cannot be parsed.
 
 The UI labels `Live AI` and `Reviewed demo` separately.
+
+## Cost and abuse controls
+
+Netlify rate limiting allows up to eight decision-brief requests per minute for each IP and domain combination. The provider request also caps output tokens. These controls reduce accidental or automated spend; they do not replace provider-side budget alerts and account limits.
 
 ## Human control
 
